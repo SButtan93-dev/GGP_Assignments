@@ -4,6 +4,7 @@
 #include "SimpleShader.h"
 #include <DirectXMath.h>
 #include "Mesh.h"
+#include "GameEntity.h"
 class Game 
 	: public DXCore
 {
@@ -31,13 +32,21 @@ private:
 	void CreateMatrices();
 	void CreateBasicGeometry();
 
-
-
+	//Create 3 Mesh objects. Make array later for easier understanding
 	Mesh* MyMesh1 = new Mesh();
 	Mesh* MyMesh2 = new Mesh();
 	Mesh* MyMesh3 = new Mesh();
 
+//Create 5 GameEntity objects. Make Array for easier understanding and not making redundant code->future work
+	GameEntity* MyGameEntity1 = new GameEntity();
+	GameEntity* MyGameEntity2 = new GameEntity();
+	GameEntity* MyGameEntity3 = new GameEntity();
+	GameEntity* MyGameEntity4 = new GameEntity();
+	GameEntity* MyGameEntity5 = new GameEntity();
 
+	
+
+	
 	// Wrappers for DirectX shaders to provide simplified functionality
 	SimpleVertexShader* vertexShader;
 	SimplePixelShader* pixelShader;

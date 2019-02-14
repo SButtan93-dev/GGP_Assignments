@@ -1,6 +1,6 @@
 #include "Game.h"
 #include "Vertex.h"
-
+#include "GameEntity.h"
 // For the DirectX Math library
 using namespace DirectX;
 
@@ -45,10 +45,15 @@ Game::~Game()
 	// will clean up their own internal DirectX stuff
 	delete vertexShader;
 	delete pixelShader;
-
+	delete MyGameEntity1;
+	delete MyGameEntity2;
+	delete MyGameEntity3;
+	delete MyGameEntity4;
+	delete MyGameEntity5;
 	delete MyMesh1;
 	delete MyMesh2;
 	delete MyMesh3;
+
 }
 
 // --------------------------------------------------------
@@ -100,6 +105,7 @@ void Game::CreateMatrices()
 	// - You'll notice a "transpose" happening below, which is redundant for
 	//    an identity matrix.  This is just to show that HLSL expects a different
 	//    matrix (column major vs row major) than the DirectX Math library
+	MyGameEntity1->GetWorldMatrix();
 	XMMATRIX W = XMMatrixIdentity();
 	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(W)); // Transpose for HLSL!
 
@@ -166,42 +172,50 @@ void Game::CreateBasicGeometry()
 	{ XMFLOAT3(-1.5f, 0.0f, +0.0f), blue },
 	{ XMFLOAT3(-2.5f, 0.0f, +0.0f), green },
 	};
-	//Mesh 1
+
+
+	int indices[] = { 0, 1, 2, 0, 3, 2 };
 	
-	MyMesh1->GetVertexData(4);
+
+
+	//Mesh 1
+
+	MyMesh1->GetVertexData(sizeof(vertices2));
 
 	MyMesh1->GetResourceVertexData(vertices2);
 
 	MyMesh1->DeviceCallForVertex(device);
-	
-	int indices[] = { 0, 1, 2, 0, 3, 2 };
 
-	MyMesh1->GetIndexData(6);
+
+
+	MyMesh1->GetIndexData(sizeof(indices));
 
 	MyMesh1->GetResourceIndexData(indices);
 
 	MyMesh1->DeviceCallForIndex(device);
+
+
+
+
+
 	
 
-//Mesh 2
-
-
-
-	MyMesh2->GetVertexData(6);
+	//Mesh 2
+	MyMesh2->GetVertexData(sizeof(vertices1));
 
 	MyMesh2->GetResourceVertexData(vertices1);
 
 	MyMesh2->DeviceCallForVertex(device);
 
 	int indices1[] = { 0,1,3,1,2,3,0,3,4,0,4,5 };
-	MyMesh2->GetIndexData(12);
+	MyMesh2->GetIndexData(sizeof(indices1));
 
 	MyMesh2->GetResourceIndexData(indices1);
 
 	MyMesh2->DeviceCallForIndex(device);
 
 	//Mesh 3
-	MyMesh3->GetVertexData(3);
+	MyMesh3->GetVertexData(sizeof(vertices3));
 		  
 	MyMesh3->GetResourceVertexData(vertices3);
 		  
@@ -209,13 +223,13 @@ void Game::CreateBasicGeometry()
 
 
 	int indices3[] = { 0, 1, 2 };
-	MyMesh3->GetIndexData(3);
+	MyMesh3->GetIndexData(sizeof(indices3));
 
 	MyMesh3->GetResourceIndexData(indices3);
 
 	MyMesh3->DeviceCallForIndex(device);
 
-
+	
 
 }
 
@@ -246,6 +260,49 @@ void Game::Update(float deltaTime, float totalTime)
 	// Quit if the escape key is pressed
 	if (GetAsyncKeyState(VK_ESCAPE))
 		Quit();
+	
+
+
+	// Make a value that goes up and down
+	float sinTime = (sin(totalTime * 10) + 2.0f) / 10.0f;
+	float cosTime = (cos(totalTime * 10) + 2.0f) / 10.0f;
+
+	//for entity 1
+	MyGameEntity1->SetMyTrans(1.f, 0.f, 0.f);
+	MyGameEntity1->SetMyRot(totalTime);
+	MyGameEntity1->SetMyScale(sinTime);
+
+	//for entity 2
+	MyGameEntity2->SetMyTrans(1.f, 0.f, 0.f);
+	MyGameEntity2->SetMyRot(1-totalTime);
+	MyGameEntity2->SetMyScale(0.7f);
+
+	//for entity 3
+	float MyLocalCountForScale=totalTime / 10;
+
+	if (MyLocalCountForScale < 0.5f)
+	{
+		MyGameEntity3->SetMyTrans(1.f, 0.f, 0.f);
+		MyGameEntity3->SetMyRot((1 - totalTime) * 10);
+		MyGameEntity3->SetMyScale(MyLocalCountForScale);
+	}
+	else
+	{
+		MyGameEntity3->SetMyTrans(1.f, 0.f, 0.f);
+		MyGameEntity3->SetMyRot((1 - totalTime) * 10);
+		MyGameEntity3->SetMyScale(0.5f);
+	}
+	//for entity 4
+	MyGameEntity4->SetMyTrans(1.f, 0.f, 0.f);
+	MyGameEntity4->SetMyRot(totalTime);
+	MyGameEntity4->SetMyScale(sinTime*2);
+
+	//for entity 5
+	MyGameEntity5->SetMyTrans(1.f, 0.f, 0.f);
+	MyGameEntity5->SetMyRot(totalTime);
+	MyGameEntity5->SetMyScale(0.8f);
+	
+
 }
 
 // --------------------------------------------------------
@@ -266,11 +323,16 @@ void Game::Draw(float deltaTime, float totalTime)
 		1.0f,
 		0);
 
+
+	//Set world matrix for Mesh 1, game entity 1
+
 	// Send data to shader variables
 	//  - Do this ONCE PER OBJECT you're drawing
 	//  - This is actually a complex process of copying data to a local buffer
 	//    and then copying that entire buffer to the GPU.  
 	//  - The "SimpleShader" class handles all of that for you.
+	
+	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(MyGameEntity1->GetWorldMatrix()));
 	vertexShader->SetMatrix4x4("world", worldMatrix);
 	vertexShader->SetMatrix4x4("view", viewMatrix);
 	vertexShader->SetMatrix4x4("projection", projectionMatrix);
@@ -288,22 +350,89 @@ void Game::Draw(float deltaTime, float totalTime)
 	pixelShader->SetShader();
 
 
-//Mesh 1
+	//call draw functions for mesh 1
+
 	MyMesh1->CallDrawMethodFunction(context);
 
 	MyMesh1->CallMyDrawFunc(context,6);
 
-	//Mesh 2
 
+
+
+	//Set world matrix for Mesh 2, game entity 2
+	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(MyGameEntity2->GetWorldMatrix()));
+	vertexShader->SetMatrix4x4("world", worldMatrix);
+	vertexShader->SetMatrix4x4("view", viewMatrix);
+	vertexShader->SetMatrix4x4("projection", projectionMatrix);
+
+	vertexShader->CopyAllBufferData();
+
+	vertexShader->SetShader();
+	pixelShader->SetShader();
+
+	
+
+	
+	//call draw functions for mesh 2
 	MyMesh2->CallDrawMethodFunction(context);
 
 	MyMesh2->CallMyDrawFunc(context,12);
 
-	//Mesh 3
+	//Set world matrix for Mesh 3, game entity 3
+
+	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(MyGameEntity3->GetWorldMatrix()));
+	vertexShader->SetMatrix4x4("world", worldMatrix);
+	vertexShader->SetMatrix4x4("view", viewMatrix);
+	vertexShader->SetMatrix4x4("projection", projectionMatrix);
+
+	vertexShader->CopyAllBufferData();
+
+	vertexShader->SetShader();
+	pixelShader->SetShader();
+
+
+	//call draw functions for mesh 3
 	MyMesh3->CallDrawMethodFunction(context);
 
 	MyMesh3->CallMyDrawFunc(context, 3);
 
+	//Set world matrix for Mesh 3, game entity 4
+	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(MyGameEntity4->GetWorldMatrix()));
+	vertexShader->SetMatrix4x4("world", worldMatrix);
+	vertexShader->SetMatrix4x4("view", viewMatrix);
+	vertexShader->SetMatrix4x4("projection", projectionMatrix);
+
+	vertexShader->CopyAllBufferData();
+
+	vertexShader->SetShader();
+	pixelShader->SetShader();
+
+
+	//call draw functions for mesh 3
+	MyMesh3->CallDrawMethodFunction(context);
+
+	MyMesh3->CallMyDrawFunc(context, 3);
+
+
+
+	//Set world matrix for Mesh 2, game entity 5
+	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(MyGameEntity5->GetWorldMatrix()));
+	vertexShader->SetMatrix4x4("world", worldMatrix);
+	vertexShader->SetMatrix4x4("view", viewMatrix);
+	vertexShader->SetMatrix4x4("projection", projectionMatrix);
+
+	vertexShader->CopyAllBufferData();
+
+	vertexShader->SetShader();
+	pixelShader->SetShader();
+
+
+
+
+	//call draw functions for mesh 2
+	MyMesh2->CallDrawMethodFunction(context);
+
+	MyMesh2->CallMyDrawFunc(context, 12);
 	// Present the back buffer to the user
 	//  - Puts the final frame we're drawing into the window so the user can see it
 	//  - Do this exactly ONCE PER FRAME (always at the very end of the frame)

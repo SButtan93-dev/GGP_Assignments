@@ -35,7 +35,7 @@ public:
 	//call draw methods from context
 	int DeviceCallForVertex(ID3D11Device* &device);
 	int DeviceCallForIndex(ID3D11Device* &device);
-	///ID3D11Buffer* GetAllocatedBufferData2();
+	
 	
 	int CallMyDrawFunc(ID3D11DeviceContext* &context, int count);
 	// Buffers to hold actual geometry data
