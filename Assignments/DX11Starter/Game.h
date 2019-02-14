@@ -1,9 +1,12 @@
 #pragma once
 
 #include "DXCore.h"
-#include "SimpleShader.h"
-#include <DirectXMath.h>
 
+#include <DirectXMath.h>
+#include "Mesh.h"
+#include "GameEntity.h"
+#include "Camera.h"
+#include "Material.h"
 class Game 
 	: public DXCore
 {
@@ -27,25 +30,39 @@ public:
 private:
 
 	// Initialization helper methods - feel free to customize, combine, etc.
-	void LoadShaders(); 
 	void CreateMatrices();
 	void CreateBasicGeometry();
 
-	// Buffers to hold actual geometry data
-	ID3D11Buffer* vertexBuffer;
-	ID3D11Buffer* indexBuffer;
+	//Create 3 Mesh objects. Make array later for easier understanding
+	Mesh* MyMesh1 = new Mesh();
+	Mesh* MyMesh2 = new Mesh();
+	Mesh* MyMesh3 = new Mesh();
 
-	// Wrappers for DirectX shaders to provide simplified functionality
-	SimpleVertexShader* vertexShader;
-	SimplePixelShader* pixelShader;
+//Create 5 GameEntity objects. Make Array for easier understanding and not making redundant code->future work
+	GameEntity* MyGameEntity1 = new GameEntity();
+	GameEntity* MyGameEntity2 = new GameEntity();
+	GameEntity* MyGameEntity3 = new GameEntity();
+	GameEntity* MyGameEntity4 = new GameEntity();
+	GameEntity* MyGameEntity5 = new GameEntity();
 
+
+	// Create Camera object.
+	Camera* MyCamera = new Camera();
+	
+
+	//Create Material object
+	Material* MyMaterial = new Material();
+	
+
+	XMFLOAT4X4* viewMatrix1;
 	// The matrices to go from model space to screen space
 	DirectX::XMFLOAT4X4 worldMatrix;
 	DirectX::XMFLOAT4X4 viewMatrix;
-	DirectX::XMFLOAT4X4 projectionMatrix;
+	DirectX::XMFLOAT4X4* projectionMatrix;
+
+
 
 	// Keeps track of the old mouse position.  Useful for 
 	// determining how far the mouse moved in a single frame.
 	POINT prevMousePos;
 };
-
