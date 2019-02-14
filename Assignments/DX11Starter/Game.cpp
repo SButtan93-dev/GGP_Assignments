@@ -21,8 +21,7 @@ Game::Game(HINSTANCE hInstance)
 		true)			// Show extra stats (fps) in title bar?
 {
 
-	vertexShader = 0;
-	pixelShader = 0;
+	
 
 #if defined(DEBUG) || defined(_DEBUG)
 	// Do we want a console window?  Probably only in debug mode
@@ -43,8 +42,7 @@ Game::~Game()
 	
 	// Delete our simple shader objects, which
 	// will clean up their own internal DirectX stuff
-	delete vertexShader;
-	delete pixelShader;
+
 	delete MyGameEntity1;
 	delete MyGameEntity2;
 	delete MyGameEntity3;
@@ -53,6 +51,8 @@ Game::~Game()
 	delete MyMesh1;
 	delete MyMesh2;
 	delete MyMesh3;
+	delete MyCamera;
+	delete MyMaterial;
 
 }
 
@@ -65,7 +65,7 @@ void Game::Init()
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
-	LoadShaders();
+	MyMaterial->LoadShaders(device, context);
 	CreateMatrices();
 	//MyMesh1->GetVertexData();
 	CreateBasicGeometry();
@@ -76,20 +76,7 @@ void Game::Init()
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-// --------------------------------------------------------
-// Loads shaders from compiled shader object (.cso) files using
-// my SimpleShader wrapper for DirectX shader manipulation.
-// - SimpleShader provides helpful methods for sending
-//   data to individual variables on the GPU
-// --------------------------------------------------------
-void Game::LoadShaders()
-{
-	vertexShader = new SimpleVertexShader(device, context);
-	vertexShader->LoadShaderFile(L"VertexShader.cso");
 
-	pixelShader = new SimplePixelShader(device, context);
-	pixelShader->LoadShaderFile(L"PixelShader.cso");
-}
 
 
 
@@ -109,31 +96,10 @@ void Game::CreateMatrices()
 	XMMATRIX W = XMMatrixIdentity();
 	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(W)); // Transpose for HLSL!
 
-	// Create the View matrix
-	// - In an actual game, recreate this matrix every time the camera 
-	//    moves (potentially every frame)
-	// - We're using the LOOK TO function, which takes the position of the
-	//    camera and the direction vector along which to look (as well as "up")
-	// - Another option is the LOOK AT function, to look towards a specific
-	//    point in 3D space
-	XMVECTOR pos = XMVectorSet(0, 0, -5, 0);
-	XMVECTOR dir = XMVectorSet(0, 0, 1, 0);
-	XMVECTOR up = XMVectorSet(0, 1, 0, 0);
-	XMMATRIX V = XMMatrixLookToLH(
-		pos,     // The position of the "camera"
-		dir,     // Direction the camera is looking
-		up);     // "Up" direction in 3D space (prevents roll)
-	XMStoreFloat4x4(&viewMatrix, XMMatrixTranspose(V)); // Transpose for HLSL!
 
-	// Create the Projection matrix
-	// - This should match the window's aspect ratio, and also update anytime
-	//    the window resizes (which is already happening in OnResize() below)
-	XMMATRIX P = XMMatrixPerspectiveFovLH(
-		0.25f * 3.1415926535f,		// Field of View Angle
-		(float)width / height,		// Aspect ratio
-		0.1f,						// Near clip plane distance
-		100.0f);					// Far clip plane distance
-	XMStoreFloat4x4(&projectionMatrix, XMMatrixTranspose(P)); // Transpose for HLSL!
+	//call and set my projection matrix
+	MyCamera->SetProjectionMatrix(width, height);
+
 }
 
 
@@ -249,7 +215,7 @@ void Game::OnResize()
 		(float)width / height,	// Aspect ratio
 		0.1f,				  	// Near clip plane distance
 		100.0f);			  	// Far clip plane distance
-	XMStoreFloat4x4(&projectionMatrix, XMMatrixTranspose(P)); // Transpose for HLSL!
+	XMStoreFloat4x4(MyCamera->GetProjectionMatrix(), XMMatrixTranspose(P)); // Transpose for HLSL!
 }
 
 // --------------------------------------------------------
@@ -302,6 +268,9 @@ void Game::Update(float deltaTime, float totalTime)
 	MyGameEntity5->SetMyRot(totalTime);
 	MyGameEntity5->SetMyScale(0.8f);
 	
+	//get viewmatrix from camera class
+	*&viewMatrix1 = MyCamera->Update(deltaTime,totalTime);
+	viewMatrix = *viewMatrix1;
 
 }
 
@@ -323,31 +292,19 @@ void Game::Draw(float deltaTime, float totalTime)
 		1.0f,
 		0);
 
-
+	//Get Projection matrix from camera for all shader calls
+	*&projectionMatrix = MyCamera->GetProjectionMatrix();
+	
+	
 	//Set world matrix for Mesh 1, game entity 1
 
-	// Send data to shader variables
-	//  - Do this ONCE PER OBJECT you're drawing
-	//  - This is actually a complex process of copying data to a local buffer
-	//    and then copying that entire buffer to the GPU.  
-	//  - The "SimpleShader" class handles all of that for you.
-	
 	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(MyGameEntity1->GetWorldMatrix()));
-	vertexShader->SetMatrix4x4("world", worldMatrix);
-	vertexShader->SetMatrix4x4("view", viewMatrix);
-	vertexShader->SetMatrix4x4("projection", projectionMatrix);
+	
+	//set shaders
+	MyGameEntity1->PrepareMaterial(worldMatrix, viewMatrix, *projectionMatrix, MyMaterial);
 
-	// Once you've set all of the data you care to change for
-	// the next draw call, you need to actually send it to the GPU
-	//  - If you skip this, the "SetMatrix" calls above won't make it to the GPU!
-	vertexShader->CopyAllBufferData();
 
-	// Set the vertex and pixel shaders to use for the next Draw() command
-	//  - These don't technically need to be set every frame...YET
-	//  - Once you start applying different shaders to different objects,
-	//    you'll need to swap the current shaders before each draw
-	vertexShader->SetShader();
-	pixelShader->SetShader();
+	
 
 
 	//call draw functions for mesh 1
@@ -361,16 +318,8 @@ void Game::Draw(float deltaTime, float totalTime)
 
 	//Set world matrix for Mesh 2, game entity 2
 	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(MyGameEntity2->GetWorldMatrix()));
-	vertexShader->SetMatrix4x4("world", worldMatrix);
-	vertexShader->SetMatrix4x4("view", viewMatrix);
-	vertexShader->SetMatrix4x4("projection", projectionMatrix);
-
-	vertexShader->CopyAllBufferData();
-
-	vertexShader->SetShader();
-	pixelShader->SetShader();
-
-	
+	//set shaders
+	MyGameEntity2->PrepareMaterial(worldMatrix, viewMatrix, *projectionMatrix, MyMaterial);
 
 	
 	//call draw functions for mesh 2
@@ -381,14 +330,8 @@ void Game::Draw(float deltaTime, float totalTime)
 	//Set world matrix for Mesh 3, game entity 3
 
 	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(MyGameEntity3->GetWorldMatrix()));
-	vertexShader->SetMatrix4x4("world", worldMatrix);
-	vertexShader->SetMatrix4x4("view", viewMatrix);
-	vertexShader->SetMatrix4x4("projection", projectionMatrix);
-
-	vertexShader->CopyAllBufferData();
-
-	vertexShader->SetShader();
-	pixelShader->SetShader();
+	//set shaders
+	MyGameEntity3->PrepareMaterial(worldMatrix, viewMatrix, *projectionMatrix, MyMaterial);
 
 
 	//call draw functions for mesh 3
@@ -398,15 +341,8 @@ void Game::Draw(float deltaTime, float totalTime)
 
 	//Set world matrix for Mesh 3, game entity 4
 	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(MyGameEntity4->GetWorldMatrix()));
-	vertexShader->SetMatrix4x4("world", worldMatrix);
-	vertexShader->SetMatrix4x4("view", viewMatrix);
-	vertexShader->SetMatrix4x4("projection", projectionMatrix);
-
-	vertexShader->CopyAllBufferData();
-
-	vertexShader->SetShader();
-	pixelShader->SetShader();
-
+	//set shaders
+	MyGameEntity4->PrepareMaterial(worldMatrix, viewMatrix, *projectionMatrix, MyMaterial);
 
 	//call draw functions for mesh 3
 	MyMesh3->CallDrawMethodFunction(context);
@@ -417,15 +353,8 @@ void Game::Draw(float deltaTime, float totalTime)
 
 	//Set world matrix for Mesh 2, game entity 5
 	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(MyGameEntity5->GetWorldMatrix()));
-	vertexShader->SetMatrix4x4("world", worldMatrix);
-	vertexShader->SetMatrix4x4("view", viewMatrix);
-	vertexShader->SetMatrix4x4("projection", projectionMatrix);
-
-	vertexShader->CopyAllBufferData();
-
-	vertexShader->SetShader();
-	pixelShader->SetShader();
-
+	//set shaders
+	MyGameEntity5->PrepareMaterial(worldMatrix, viewMatrix, *projectionMatrix, MyMaterial);
 
 
 
@@ -456,10 +385,13 @@ void Game::Draw(float deltaTime, float totalTime)
 void Game::OnMouseDown(WPARAM buttonState, int x, int y)
 {
 	// Add any custom code here...
-
+	
 	// Save the previous mouse position, so we have it for the future
 	prevMousePos.x = x;
 	prevMousePos.y = y;
+
+	
+
 
 	// Caputure the mouse so we keep getting mouse move
 	// events even if the mouse leaves the window.  we'll be
@@ -487,7 +419,22 @@ void Game::OnMouseUp(WPARAM buttonState, int x, int y)
 void Game::OnMouseMove(WPARAM buttonState, int x, int y)
 {
 	// Add any custom code here...
-
+	if (y > prevMousePos.y && (buttonState & 0x0001))
+	{
+		MyCamera->SetMyRotation((float)x*-0.00001f, 0);
+	}
+	else if (y < prevMousePos.y && (buttonState & 0x0001))
+	{
+		MyCamera->SetMyRotation((float)x*0.00001f, 0);
+	}
+	else if (x > prevMousePos.x && (buttonState & 0x0002))
+	{
+		MyCamera->SetMyRotation(0, (float)y*0.00001f);
+	}
+	else if (x < prevMousePos.x && (buttonState & 0x0002))
+	{
+		MyCamera->SetMyRotation(0, (float)y*-0.00001f);
+	}
 	// Save the previous mouse position, so we have it for the future
 	prevMousePos.x = x;
 	prevMousePos.y = y;

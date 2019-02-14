@@ -1,10 +1,12 @@
 #pragma once
 
 #include "DXCore.h"
-#include "SimpleShader.h"
+
 #include <DirectXMath.h>
 #include "Mesh.h"
 #include "GameEntity.h"
+#include "Camera.h"
+#include "Material.h"
 class Game 
 	: public DXCore
 {
@@ -28,7 +30,6 @@ public:
 private:
 
 	// Initialization helper methods - feel free to customize, combine, etc.
-	void LoadShaders(); 
 	void CreateMatrices();
 	void CreateBasicGeometry();
 
@@ -44,20 +45,24 @@ private:
 	GameEntity* MyGameEntity4 = new GameEntity();
 	GameEntity* MyGameEntity5 = new GameEntity();
 
+
+	// Create Camera object.
+	Camera* MyCamera = new Camera();
 	
 
+	//Create Material object
+	Material* MyMaterial = new Material();
 	
-	// Wrappers for DirectX shaders to provide simplified functionality
-	SimpleVertexShader* vertexShader;
-	SimplePixelShader* pixelShader;
 
+	XMFLOAT4X4* viewMatrix1;
 	// The matrices to go from model space to screen space
 	DirectX::XMFLOAT4X4 worldMatrix;
 	DirectX::XMFLOAT4X4 viewMatrix;
-	DirectX::XMFLOAT4X4 projectionMatrix;
+	DirectX::XMFLOAT4X4* projectionMatrix;
+
+
 
 	// Keeps track of the old mouse position.  Useful for 
 	// determining how far the mouse moved in a single frame.
 	POINT prevMousePos;
 };
-

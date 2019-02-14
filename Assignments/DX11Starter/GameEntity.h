@@ -4,6 +4,7 @@
 #include "SimpleShader.h"
 #include <DirectXMath.h>
 #include "Mesh.h"
+#include "Material.h"
 using namespace DirectX;
 
 class GameEntity
@@ -14,8 +15,8 @@ public:
 
 
 	
-
-
+	//Pass world, view and projection matrix as 1st 3 arguments. 4th parameter is referenced object that calls material class vertex and pixel shader functions. All are called from game.cpp 
+	void PrepareMaterial(XMFLOAT4X4 worldMatrix, XMFLOAT4X4 viewMatrix, XMFLOAT4X4 projectionMatrix, Material* &mynewobj);
 	
 
 	//return XMMATRIX to update in game class. Order is S-R-T.
